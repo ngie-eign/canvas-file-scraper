@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools>=65", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "canvas_file_scraper"
+version = "0.0.1"
+dependencies = [
+    "bs4",
+    "canvasapi",
+    "markdownify",
+    "pathvalidate",
+    "requests"
+]
+requires-python = ">=3.11"
+authors = [
+  { name = "Enji Cooper", email = "yaneurabeya@gmail.com" }
+]
+maintainers = [
+  { name = "Enji Cooper", email = "yaneurabeya@gmail.com" }
+]
+description = "Mirroring tool for UBC Canvas."
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = ["selenium", "wget"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15"
+]
+
+[project.scripts]
+canvas-file-scraper = "canvas_file_scraper.__main__:main"
+
+[project.urls]
+Repository = "https://github.com/Gigahawk/canvas-file-scraper/"
+Issues = "https://github.com/Gigahawk/canvas-file-scraper/issues"
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.run]
+branch = true
+source = ["src/"]
+
+[tool.pytest.ini_options]
+timeout = 10
+
+[tool.setuptools]
+package-dir = {"" = "src/"}
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+min_version = 4.0
+env_list =
+    coverage
+    py311
+    py312
+    py313
+    py314
+    py315
+
+[testenv]
+deps =
+    pytest
+    pytest-timeout
+commands =
+    {envpython} -m pytest {posargs:-v tests}
+
+[testenv:coverage]
+deps =
+    coverage
+    pytest
+    pytest-cov
+    pytest-timeout
+commands =
+    {envpython} -m pytest --cov=canvas_file_scraper --cov-fail-under=80 --cov-report=html --cov-report=term \
+        {posargs:-vvvv tests}
+
+[testenv:type]
+deps =
+    mypy
+commands =
+    {envpython} -m mypy {posargs:src}
+"""
