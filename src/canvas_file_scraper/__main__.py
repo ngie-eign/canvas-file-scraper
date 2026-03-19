@@ -1,12 +1,7 @@
 import argparse
 import logging
 import sys
-import requests
-import os
-import pprint
-import json
-from bs4 import BeautifulSoup
-import re
+
 from canvas_file_scraper.scraper import CanvasScraper
 
 log_formatter = logging.Formatter("[%(levelname)-5.5s][%(name)s] %(message)s")
@@ -24,7 +19,7 @@ logger.addHandler(console_handler)
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Grabs all files for all courses on Canvas"
+        description="Grabs all files for all courses on Canvas",
     )
     parser.add_argument(
         "canvas_api_key",

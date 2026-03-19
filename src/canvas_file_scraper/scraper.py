@@ -1,22 +1,22 @@
-import types
-import re
-import os
-import requests
-from requests.exceptions import MissingSchema
-import logging
 import json
-from tempfile import TemporaryFile
-from pathvalidate import sanitize_filename
+import logging
+import os
+import re
+import types
 import urllib
-from bs4 import BeautifulSoup
-from markdownify import markdownify as md
-from canvasapi import Canvas
-from canvasapi.exceptions import Forbidden, Unauthorized, ResourceDoesNotExist
+from tempfile import TemporaryFile
 
+import requests
+from bs4 import BeautifulSoup
+from canvasapi import Canvas
 from canvasapi.canvas_object import CanvasObject
+from canvasapi.exceptions import Forbidden, ResourceDoesNotExist, Unauthorized
 from canvasapi.file import File
 from canvasapi.paginated_list import PaginatedList
 from canvasapi.util import combine_kwargs
+from markdownify import markdownify as md
+from pathvalidate import sanitize_filename
+from requests.exceptions import MissingSchema
 
 
 class MediaObject(CanvasObject):
@@ -28,7 +28,7 @@ def get_media_objects(self, *args, **kwargs):
         MediaObject,
         self._requester,
         "GET",
-        "courses/{}/media_objects".format(self.id),
+        f"courses/{self.id}/media_objects",
         {"course_id": self.id},
         _kwargs=combine_kwargs(**kwargs),
     )
@@ -36,7 +36,7 @@ def get_media_objects(self, *args, **kwargs):
 
 class CanvasScraper:
     def __init__(
-        self, base_url, api_key, path, overwrite, videos, markdown, logger=None
+        self, base_url, api_key, path, overwrite, videos, markdown, logger=None,
     ):
         self.api_key = api_key
         self.base_url = self._create_base_url(base_url)
@@ -86,7 +86,7 @@ class CanvasScraper:
                     pdb.set_trace()
             except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
                 self.logger.warning(e)
-                self.logger.warning(f"External tools not accessible")
+                self.logger.warning("External tools not accessible")
 
             self.push_raw(f"assignments_{course.id}", "assignments", 0)
             try:
@@ -99,7 +99,7 @@ class CanvasScraper:
                         self.pop()
             except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
                 self.logger.warning(e)
-                self.logger.warning(f"Assignments not accessible")
+                self.logger.warning("Assignments not accessible")
             finally:
                 self.pop()
 
@@ -114,7 +114,7 @@ class CanvasScraper:
                         self.pop()
             except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
                 self.logger.warning(e)
-                self.logger.warning(f"Pages not accessible")
+                self.logger.warning("Pages not accessible")
             finally:
                 self.pop()
 
@@ -128,7 +128,7 @@ class CanvasScraper:
                     self._markdownify(fp_path, fp_md_path)
             except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
                 self.logger.warning(e)
-                self.logger.warning(f"Front page not accessible")
+                self.logger.warning("Front page not accessible")
 
             try:
                 modules = course.get_modules()
@@ -136,7 +136,7 @@ class CanvasScraper:
                     self.recurse_module(m)
             except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
                 self.logger.warning(e)
-                self.logger.warning(f"Modules not accessible")
+                self.logger.warning("Modules not accessible")
 
             try:
                 groups = course.get_groups()
@@ -144,7 +144,7 @@ class CanvasScraper:
                     self.recurse_group(g)
             except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
                 self.logger.warning(e)
-                self.logger.warning(f"Groups not accessible")
+                self.logger.warning("Groups not accessible")
 
             self.scrape_files(course)
 
@@ -174,7 +174,7 @@ class CanvasScraper:
                 for f in folders:
                     self.recurse_folder(f)
             except Unauthorized:
-                self.logger.warning(f"Files not accessible")
+                self.logger.warning("Files not accessible")
         finally:
             self.pop()
 
@@ -190,14 +190,14 @@ class CanvasScraper:
                         self.handle_media_video(m)
                     else:
                         self.logger.warning(
-                            f"Media '{m.title}' type {m.media_type} is unsupported"
+                            f"Media '{m.title}' type {m.media_type} is unsupported",
                         )
                         import pdb
 
                         pdb.set_trace()
             except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
                 self.logger.warning(e)
-                self.logger.warning(f"Media objects not accessible")
+                self.logger.warning("Media objects not accessible")
         finally:
             self.pop()
 
@@ -212,7 +212,7 @@ class CanvasScraper:
                     except AttributeError:
                         try:
                             f_name = f.display_name
-                        except Exception as e:
+                        except Exception:
                             import pdb
 
                             pdb.set_trace()
@@ -225,10 +225,10 @@ class CanvasScraper:
                             f.download(f_path)
                             self.logger.info(f"{f_path} downloaded")
                         except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
-                            self.logger.warning(f"file not accessible")
+                            self.logger.warning("file not accessible")
                             self.logger.warning(str(e))
             except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
-                self.logger.warning(f"folder not accessible")
+                self.logger.warning("folder not accessible")
                 self.logger.warning(str(e))
         finally:
             self.pop()
@@ -475,7 +475,7 @@ class CanvasScraper:
                     f.write(r.content)
                     self.logger.info(f"{path} downloaded")
                     return True
-            except MissingSchema as e:
+            except MissingSchema:
                 self.logger.error(f"{url} is not a valid url")
                 return False
             except Exception as e:
@@ -500,7 +500,7 @@ class CanvasScraper:
 
     def _dl_page_data(self, src_path, requester):
         self.logger.info(f"Downloading page data for {src_path}")
-        with open(src_path, "r") as f:
+        with open(src_path) as f:
             src = f.read()
 
         soup = BeautifulSoup(src, "html.parser")
@@ -532,9 +532,9 @@ class CanvasScraper:
                 self.logger.info("Canvas file detected, using Canvas API for download")
                 try:
                     self._dl_canvas_file(
-                        href, os.path.join(self.path, "files"), requester
+                        href, os.path.join(self.path, "files"), requester,
                     )
-                except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
+                except (Forbidden, Unauthorized, ResourceDoesNotExist):
                     self.logger.error("Could not download file")
             elif href.startswith("mailto"):
                 self.logger.info("mailto link detected, saving email")
@@ -555,7 +555,7 @@ class CanvasScraper:
                 self.logger.info("Canvas assignment detected, handling assignment")
                 assignment_item = self._assignment_url_to_item(href, requester)
                 self.push_raw(
-                    f"assignment_{assignment_item.content_id}", "assignment", 0
+                    f"assignment_{assignment_item.content_id}", "assignment", 0,
                 )
                 try:
                     self.handle_assignment(assignment_item)
@@ -570,7 +570,7 @@ class CanvasScraper:
 
         if self.videos:
             # Download Kaltura videos
-            videos = soup.find_all("iframe", **{"id": "kaltura_player"})
+            videos = soup.find_all("iframe", id="kaltura_player")
             for idx, video in enumerate(videos):
                 video_path = os.path.join(self.path, "videos", f"{idx}.mp4")
                 self._dl_video(video["src"], video_path)
@@ -582,7 +582,7 @@ class CanvasScraper:
         file = File(requester, resp.json())
         dl_path = os.path.join(path, file.filename)
         if not self._should_write(dl_path):
-            return
+            return None
         file.download(dl_path)
         self.logger.info(f"{dl_path} downloaded")
         return True
@@ -606,7 +606,7 @@ class CanvasScraper:
             return
 
         flavor_asset = next(
-            (f for f in flavor_assets if f.get("flavorParamsId") == 5), None
+            (f for f in flavor_assets if f.get("flavorParamsId") == 5), None,
         )
         if not flavor_asset:
             self.logger.warning(f"Could not find correct flavorAsset for {base_url}")
@@ -616,7 +616,7 @@ class CanvasScraper:
             flavor_id = flavor_asset["id"]
         except KeyError:
             self.logger.warning(
-                f"Could not find keys inside flavorAsset for {base_url}"
+                f"Could not find keys inside flavorAsset for {base_url}",
             )
             return
         manifest_url = self._kaltura_manifest_url(base_url, entry_id, flavor_id)
@@ -626,7 +626,7 @@ class CanvasScraper:
             self.logger.warning(f"Could not find index urlfor {base_url}")
             return
         index = filter(
-            lambda l: not l.startswith("#"), requests.get(index_url).text.splitlines()
+            lambda l: not l.startswith("#"), requests.get(index_url).text.splitlines(),
         )
         streaming_url = index_url.replace("index.m3u8", "")
         with TemporaryFile() as tf:
@@ -669,17 +669,17 @@ class CanvasScraper:
     def _markdownify(self, src_path, dest_path):
         if self._should_write(dest_path):
             self.logger.info(f"Converting {src_path} to markdown")
-            with open(src_path, "r") as f:
+            with open(src_path) as f:
                 src = f.read()
             with open(dest_path, "w") as f:
                 f.writelines(md(src))
 
     def _should_write(self, path):
-        if os.path.isfile(path) and self.overwrite is "no":
+        if os.path.isfile(path) and self.overwrite == "no":
             self.logger.debug(f"Skipping file {path}")
             return False
-        elif (
-            self.overwrite is "ask"
+        if (
+            self.overwrite == "ask"
             and input(f"{path} already exists, overwrite? (y/n)") != "y"
         ):
             return False
