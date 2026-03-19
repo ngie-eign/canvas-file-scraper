@@ -6,11 +6,11 @@ build-backend = "setuptools.build_meta"
 name = "canvas_file_scraper"
 version = "0.0.1"
 dependencies = [
-    "bs4",
-    "canvasapi",
-    "markdownify",
-    "pathvalidate",
-    "requests"
+    "beautifulsoup4~=4.14.3",
+    "canvasapi~=3.5.0",
+    "markdownify~=1.2.2",
+    "pathvalidate~=3.3.1",
+    "requests~=2.32.5"
 ]
 requires-python = ">=3.11"
 authors = [
