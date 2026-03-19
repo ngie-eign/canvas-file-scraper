@@ -1,6 +1,11 @@
 files/
 **.log
 
+# Don't commit these files right now. It can cause grief with folks that run different
+# versions of python, etc.
+Pipfile
+Pipfile.lock
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
